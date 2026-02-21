@@ -1,7 +1,7 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
-
+import '../models/defaulter_model.dart';
 import '../models/attendance_model.dart';
 import '../models/attendance_summary.dart';
 
@@ -156,6 +156,28 @@ class AttendanceService {
       throw Exception("Failed to load summary (${response.statusCode})");
     }
   }
+
+  // =========================
+// 👨‍🏫 COURSE DEFAULTERS
+// =========================
+static Future<List<Defaulter>> fetchDefaulters(
+  int courseId, {
+  double threshold = 75,
+}) async {
+  final prefs = await SharedPreferences.getInstance();
+  final token = prefs.getString("jwt")!;
+
+  final res = await http.get(
+    Uri.parse(
+      "$baseUrl/api/attendance/course/$courseId/defaulters"
+      "?threshold=$threshold",
+    ),
+    headers: {"Authorization": "Bearer $token"},
+  );
+
+  final List data = json.decode(res.body);
+  return data.map((e) => Defaulter.fromJson(e)).toList();
+}
 
   // =================================================
   // 📄 TEACHER — PAGINATION (LARGE CLASSES)

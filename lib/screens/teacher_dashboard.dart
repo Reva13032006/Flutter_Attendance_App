@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
 import 'teacher_attendance_history_screen.dart';
+import 'teacher_defaulters_screen.dart';
 import '../services/course_service.dart';
 import '../services/enrollment_service.dart';
 import '../services/attendance_service.dart';
@@ -175,6 +176,28 @@ class _TeacherDashboardState extends State<TeacherDashboard> {
         title: const Text("Teacher Dashboard"),
         backgroundColor: Colors.blue,
         actions: [
+          // 🔔 7th ITEM — DEFAULTERS BUTTON
+          IconButton(
+            icon: const Icon(Icons.warning),
+            tooltip: "Defaulters",
+            onPressed: () {
+              if (selectedCourseId == null) {
+                showError("Select a course first");
+                return;
+              }
+
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => TeacherDefaultersScreen(
+                    courseId: selectedCourseId!,
+                  ),
+                ),
+              );
+            },
+          ),
+
+          // 📊 EXISTING ANALYTICS MENU
           PopupMenuButton<String>(
             icon: const Icon(Icons.analytics),
             tooltip: "Attendance Analytics",
