@@ -1,3 +1,4 @@
+#gitignore for Flutter projects
 # Flutter/Dart/Pub related
 .dart_tool/
 .packages
