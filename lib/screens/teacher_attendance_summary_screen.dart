@@ -5,7 +5,8 @@ import '../services/attendance_service.dart';
 import '../models/attendance_summary.dart';
 
 class TeacherAttendanceSummaryScreen extends StatefulWidget {
-  const TeacherAttendanceSummaryScreen({super.key});
+  const TeacherAttendanceSummaryScreen({super.key, required this.courseId});
+  final int courseId;
 
   @override
   State<TeacherAttendanceSummaryScreen> createState() =>

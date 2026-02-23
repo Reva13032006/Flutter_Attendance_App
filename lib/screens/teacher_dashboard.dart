@@ -3,6 +3,8 @@ import 'package:intl/intl.dart';
 
 import 'teacher_attendance_history_screen.dart';
 import 'teacher_defaulters_screen.dart';
+import 'teacher_attendance_summary_screen.dart'; 
+
 import '../services/course_service.dart';
 import '../services/enrollment_service.dart';
 import '../services/attendance_service.dart';
@@ -29,7 +31,7 @@ class _TeacherDashboardState extends State<TeacherDashboard> {
   bool loadingStudents = false;
   bool submitting = false;
 
-  // 🔒 ADDITION 1: flag
+  // 🔒 ADDED FLAG (nothing removed)
   bool attendanceAlreadyMarked = false;
 
   @override
@@ -69,7 +71,9 @@ class _TeacherDashboardState extends State<TeacherDashboard> {
 
       setState(() {
         students = List<Map<String, dynamic>>.from(data);
-        attendance = {for (var s in students) s["rollNumber"] as String: true};
+        attendance = {
+          for (var s in students) s["rollNumber"] as String: true
+        };
         loadingStudents = false;
       });
     } catch (_) {
@@ -78,7 +82,9 @@ class _TeacherDashboardState extends State<TeacherDashboard> {
     }
   }
 
-  // 🔒 ADDITION 2: check if attendance already exists
+  // =========================
+  // CHECK IF ATTENDANCE EXISTS
+  // =========================
   Future<void> checkAttendanceAlreadyMarked() async {
     if (selectedCourseId == null) return;
 
@@ -101,7 +107,6 @@ class _TeacherDashboardState extends State<TeacherDashboard> {
   // SUBMIT BULK ATTENDANCE
   // =========================
   Future<void> submitAttendance() async {
-    // 🔒 ADDITION 3: hard block
     if (attendanceAlreadyMarked) {
       showError("Attendance already marked for this date.");
       return;
@@ -155,7 +160,7 @@ class _TeacherDashboardState extends State<TeacherDashboard> {
 
     if (picked != null) {
       setState(() => selectedDate = picked);
-      checkAttendanceAlreadyMarked(); // 🔒 ADDITION 4
+      checkAttendanceAlreadyMarked();
     }
   }
 
@@ -204,6 +209,7 @@ class _TeacherDashboardState extends State<TeacherDashboard> {
         title: const Text("Teacher Dashboard"),
         backgroundColor: Colors.blue,
         actions: [
+          // 1️⃣ DEFAULTERS
           IconButton(
             icon: const Icon(Icons.warning),
             tooltip: "Defaulters",
@@ -222,6 +228,29 @@ class _TeacherDashboardState extends State<TeacherDashboard> {
               );
             },
           ),
+
+          // 2️⃣ ATTENDANCE SUMMARY (✅ NEW – 5th NAVIGATION)
+          IconButton(
+            icon: const Icon(Icons.list_alt),
+            tooltip: "Attendance Summary",
+            onPressed: () {
+              if (selectedCourseId == null) {
+                showError("Select a course first");
+                return;
+              }
+
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => TeacherAttendanceSummaryScreen(
+                    courseId: selectedCourseId!,
+                  ),
+                ),
+              );
+            },
+          ),
+
+          // 3️⃣ ANALYTICS (EXISTING)
           PopupMenuButton<String>(
             icon: const Icon(Icons.analytics),
             tooltip: "Attendance Analytics",
@@ -254,11 +283,11 @@ class _TeacherDashboardState extends State<TeacherDashboard> {
           ),
         ],
       ),
+
       body: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
           children: [
-            // 🔒 ADDITION 5: warning message
             if (attendanceAlreadyMarked)
               Container(
                 padding: const EdgeInsets.all(12),
@@ -274,7 +303,7 @@ class _TeacherDashboardState extends State<TeacherDashboard> {
                     SizedBox(width: 8),
                     Expanded(
                       child: Text(
-                        "Attendance already marked for this date.\nYou cannot modify it.",
+                        "Attendance already marked for this date.\nEditing is disabled.",
                         style: TextStyle(color: Colors.red),
                       ),
                     ),
@@ -354,7 +383,7 @@ class _TeacherDashboardState extends State<TeacherDashboard> {
                     onChanged: (value) {
                       setState(() => selectedCourseId = value);
                       loadStudents(value!);
-                      checkAttendanceAlreadyMarked(); // 🔒 ADDITION 6
+                      checkAttendanceAlreadyMarked();
                     },
                   ),
 
@@ -377,7 +406,7 @@ class _TeacherDashboardState extends State<TeacherDashboard> {
 
             const SizedBox(height: 16),
 
-            // STUDENT LIST (UNCHANGED)
+            // STUDENT LIST
             Expanded(
               child: loadingStudents
                   ? const Center(child: CircularProgressIndicator())
@@ -417,9 +446,12 @@ class _TeacherDashboardState extends State<TeacherDashboard> {
                                 ),
                                 trailing: Switch(
                                   value: isPresent,
-                                  onChanged: (v) {
-                                    setState(() => attendance[roll] = v);
-                                  },
+                                  onChanged: attendanceAlreadyMarked
+                                      ? null
+                                      : (v) {
+                                          setState(() =>
+                                              attendance[roll] = v);
+                                        },
                                 ),
                               ),
                             );
@@ -427,7 +459,7 @@ class _TeacherDashboardState extends State<TeacherDashboard> {
                         ),
             ),
 
-            // SUBMIT BUTTON (ONLY CONDITION ADDED)
+            // SUBMIT BUTTON
             SizedBox(
               width: double.infinity,
               child: ElevatedButton(

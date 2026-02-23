@@ -157,6 +157,57 @@ class AttendanceService {
     }
   }
 
+  static Future<List<AttendanceSummary>> fetchMonthlySummary(
+    int courseId,
+    String month, // yyyy-MM
+) async {
+  final prefs = await SharedPreferences.getInstance();
+  final token = prefs.getString("jwt");
+
+  final response = await http.get(
+    Uri.parse("$baseUrl/api/attendance/course/$courseId/month/$month"),
+    headers: {
+      "Authorization": "Bearer $token",
+      "Content-Type": "application/json",
+    },
+  );
+
+  if (response.statusCode == 200) {
+    final List data = jsonDecode(response.body);
+    return data.map((e) => AttendanceSummary.fromJson(e)).toList();
+  } else {
+    throw Exception("Failed to load monthly summary");
+  }
+}
+
+  static Future<bool> isAttendanceAlreadyMarked(
+  int courseId,
+  DateTime date,
+) async {
+  final prefs = await SharedPreferences.getInstance();
+  final token = prefs.getString("jwt");
+  if (token == null) throw Exception("JWT missing");
+
+  final dateStr = date.toIso8601String().split("T")[0];
+
+  final res = await http.get(
+    Uri.parse(
+      "$baseUrl/api/attendance/course/$courseId/date/$dateStr",
+    ),
+    headers: {
+      "Authorization": "Bearer $token",
+      "Content-Type": "application/json",
+    },
+  );
+
+  if (res.statusCode == 200) {
+    final List data = jsonDecode(res.body);
+    return data.isNotEmpty; // 🔑 THIS is the lock logic
+  } else {
+    throw Exception("Failed to check attendance");
+  }
+}
+
   // =========================
 // 👨‍🏫 COURSE DEFAULTERS
 // =========================
