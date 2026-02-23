@@ -29,6 +29,9 @@ class _TeacherDashboardState extends State<TeacherDashboard> {
   bool loadingStudents = false;
   bool submitting = false;
 
+  // 🔒 ADDITION 1: flag
+  bool attendanceAlreadyMarked = false;
+
   @override
   void initState() {
     super.initState();
@@ -75,10 +78,35 @@ class _TeacherDashboardState extends State<TeacherDashboard> {
     }
   }
 
+  // 🔒 ADDITION 2: check if attendance already exists
+  Future<void> checkAttendanceAlreadyMarked() async {
+    if (selectedCourseId == null) return;
+
+    try {
+      final data =
+          await AttendanceService.fetchAttendanceByCourseAndDate(
+        selectedCourseId!,
+        DateFormat("yyyy-MM-dd").format(selectedDate),
+      );
+
+      setState(() {
+        attendanceAlreadyMarked = data.isNotEmpty;
+      });
+    } catch (_) {
+      attendanceAlreadyMarked = false;
+    }
+  }
+
   // =========================
   // SUBMIT BULK ATTENDANCE
   // =========================
   Future<void> submitAttendance() async {
+    // 🔒 ADDITION 3: hard block
+    if (attendanceAlreadyMarked) {
+      showError("Attendance already marked for this date.");
+      return;
+    }
+
     if (selectedCourseId == null || students.isEmpty) return;
 
     setState(() => submitting = true);
@@ -96,10 +124,6 @@ class _TeacherDashboardState extends State<TeacherDashboard> {
           backgroundColor: Colors.green,
         ),
       );
-
-      setState(() {
-        attendance.updateAll((key, value) => true);
-      });
     } catch (_) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -128,7 +152,11 @@ class _TeacherDashboardState extends State<TeacherDashboard> {
       firstDate: DateTime(2023),
       lastDate: DateTime.now(),
     );
-    if (picked != null) setState(() => selectedDate = picked);
+
+    if (picked != null) {
+      setState(() => selectedDate = picked);
+      checkAttendanceAlreadyMarked(); // 🔒 ADDITION 4
+    }
   }
 
   // =========================
@@ -176,7 +204,6 @@ class _TeacherDashboardState extends State<TeacherDashboard> {
         title: const Text("Teacher Dashboard"),
         backgroundColor: Colors.blue,
         actions: [
-          // 🔔 7th ITEM — DEFAULTERS BUTTON
           IconButton(
             icon: const Icon(Icons.warning),
             tooltip: "Defaulters",
@@ -189,15 +216,12 @@ class _TeacherDashboardState extends State<TeacherDashboard> {
               Navigator.push(
                 context,
                 MaterialPageRoute(
-                  builder: (_) => TeacherDefaultersScreen(
-                    courseId: selectedCourseId!,
-                  ),
+                  builder: (_) =>
+                      TeacherDefaultersScreen(courseId: selectedCourseId!),
                 ),
               );
             },
           ),
-
-          // 📊 EXISTING ANALYTICS MENU
           PopupMenuButton<String>(
             icon: const Icon(Icons.analytics),
             tooltip: "Attendance Analytics",
@@ -234,9 +258,31 @@ class _TeacherDashboardState extends State<TeacherDashboard> {
         padding: const EdgeInsets.all(16),
         child: Column(
           children: [
-            // =========================
-            // DASHBOARD SUMMARY (5)
-            // =========================
+            // 🔒 ADDITION 5: warning message
+            if (attendanceAlreadyMarked)
+              Container(
+                padding: const EdgeInsets.all(12),
+                margin: const EdgeInsets.only(bottom: 12),
+                decoration: BoxDecoration(
+                  color: Colors.red.shade50,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.red),
+                ),
+                child: const Row(
+                  children: [
+                    Icon(Icons.warning, color: Colors.red),
+                    SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        "Attendance already marked for this date.\nYou cannot modify it.",
+                        style: TextStyle(color: Colors.red),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
+            // DASHBOARD SUMMARY (UNCHANGED)
             FutureBuilder(
               future: DashboardService.fetchTeacherDashboard(),
               builder: (context, snapshot) {
@@ -291,9 +337,7 @@ class _TeacherDashboardState extends State<TeacherDashboard> {
               },
             ),
 
-            // =========================
             // COURSE DROPDOWN
-            // =========================
             loadingCourses
                 ? const CircularProgressIndicator()
                 : DropdownButtonFormField<int>(
@@ -310,6 +354,7 @@ class _TeacherDashboardState extends State<TeacherDashboard> {
                     onChanged: (value) {
                       setState(() => selectedCourseId = value);
                       loadStudents(value!);
+                      checkAttendanceAlreadyMarked(); // 🔒 ADDITION 6
                     },
                   ),
 
@@ -332,7 +377,7 @@ class _TeacherDashboardState extends State<TeacherDashboard> {
 
             const SizedBox(height: 16),
 
-            // STUDENT LIST
+            // STUDENT LIST (UNCHANGED)
             Expanded(
               child: loadingStudents
                   ? const Center(child: CircularProgressIndicator())
@@ -382,14 +427,16 @@ class _TeacherDashboardState extends State<TeacherDashboard> {
                         ),
             ),
 
-            // SUBMIT BUTTON
+            // SUBMIT BUTTON (ONLY CONDITION ADDED)
             SizedBox(
               width: double.infinity,
               child: ElevatedButton(
-                onPressed:
-                    (selectedCourseId == null || students.isEmpty || submitting)
-                        ? null
-                        : submitAttendance,
+                onPressed: (selectedCourseId == null ||
+                        students.isEmpty ||
+                        submitting ||
+                        attendanceAlreadyMarked)
+                    ? null
+                    : submitAttendance,
                 child: submitting
                     ? const SizedBox(
                         height: 20,
